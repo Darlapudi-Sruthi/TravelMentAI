@@ -1,0 +1,258 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Global Hardened Primitives
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isBoundedStringArray(arr) {
+      return arr is list && arr.size() <= 10 && (
+        arr.size() == 0 || (arr[0] is string && arr[0].size() >= 1 && arr[0].size() <= 200)
+      );
+    }
+
+    // =========================================================================
+    // Validation Blueprint: UserProfile (/users/{userId})
+    // =========================================================================
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+          'uid',
+          'displayName',
+          'homeCity',
+          'preferredCurrency',
+          'travelStyle',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid',
+          'displayName',
+          'homeCity',
+          'preferredCurrency',
+          'travelStyle',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.uid is string
+        && data.uid.size() >= 1
+        && data.uid.size() <= 128
+        && data.uid.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.uid == request.auth.uid
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 100
+        && data.homeCity is string
+        && data.homeCity.size() >= 1
+        && data.homeCity.size() <= 100
+        && data.preferredCurrency is string
+        && data.preferredCurrency.size() >= 3
+        && data.preferredCurrency.size() <= 10
+        && data.preferredCurrency in ['INR', 'USD', 'EUR']
+        && data.travelStyle is string
+        && data.travelStyle.size() >= 6
+        && data.travelStyle.size() <= 20
+        && data.travelStyle in ['Budget', 'Standard', 'Premium']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Validation Blueprint: SavedTrip (/trips/{tripId})
+    // =========================================================================
+    function isValidSavedTrip(data) {
+      return data.keys().hasAll([
+          'tripId',
+          'ownerId',
+          'origin',
+          'destination',
+          'startDate',
+          'endDate',
+          'travellers',
+          'tripType',
+          'totalBudget',
+          'savedHotels',
+          'savedRestaurants',
+          'savedPlaces',
+          'itinerarySummary',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'tripId',
+          'ownerId',
+          'origin',
+          'destination',
+          'startDate',
+          'endDate',
+          'travellers',
+          'tripType',
+          'totalBudget',
+          'savedHotels',
+          'savedRestaurants',
+          'savedPlaces',
+          'itinerarySummary',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.tripId is string
+        && data.tripId.size() >= 1
+        && data.tripId.size() <= 128
+        && data.tripId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.origin is string
+        && data.origin.size() >= 1
+        && data.origin.size() <= 100
+        && data.destination is string
+        && data.destination.size() >= 1
+        && data.destination.size() <= 100
+        && data.startDate is string
+        && data.startDate.size() >= 1
+        && data.startDate.size() <= 30
+        && data.endDate is string
+        && data.endDate.size() >= 1
+        && data.endDate.size() <= 30
+        && data.travellers is int
+        && data.travellers >= 1
+        && data.travellers <= 50
+        && data.tripType is string
+        && data.tripType.size() >= 4
+        && data.tripType.size() <= 20
+        && data.tripType in ['Solo', 'Family', 'Friends', 'Couple', 'Business']
+        && data.totalBudget is int
+        && data.totalBudget >= 0
+        && data.totalBudget <= 100000000
+        && isBoundedStringArray(data.savedHotels)
+        && isBoundedStringArray(data.savedRestaurants)
+        && isBoundedStringArray(data.savedPlaces)
+        && data.itinerarySummary is string
+        && data.itinerarySummary.size() >= 1
+        && data.itinerarySummary.size() <= 5000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection Rules: /users/{userId}
+    // =========================================================================
+    match /users/{userId} {
+      allow get: if isSignedIn()
+        && isValidId(userId)
+        && request.auth.uid == userId;
+
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && existing().uid == request.auth.uid
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName',
+          'homeCity',
+          'preferredCurrency',
+          'travelStyle',
+          'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // Collection Rules: /trips/{tripId}
+    // =========================================================================
+    match /trips/{tripId} {
+      allow get: if isSignedIn()
+        && isValidId(tripId)
+        && existing().ownerId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid;
+
+      allow create: if isVerifiedUser()
+        && isValidId(tripId)
+        && isValidSavedTrip(incoming())
+        && incoming().tripId == tripId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      allow update: if isVerifiedUser()
+        && isValidId(tripId)
+        && isValidSavedTrip(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().tripId == existing().tripId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action 1: Update Bookmarks (Hotels, Restaurants, Places)
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'savedHotels',
+            'savedRestaurants',
+            'savedPlaces',
+            'updatedAt'
+          ])
+          ||
+          // Action 2: Update Trip Details & Itinerary
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'origin',
+            'destination',
+            'startDate',
+            'endDate',
+            'travellers',
+            'tripType',
+            'totalBudget',
+            'savedHotels',
+            'savedRestaurants',
+            'savedPlaces',
+            'itinerarySummary',
+            'updatedAt'
+          ])
+        );
+
+      allow delete: if isVerifiedUser()
+        && isValidId(tripId)
+        && existing().ownerId == request.auth.uid;
+    }
+  }
+}

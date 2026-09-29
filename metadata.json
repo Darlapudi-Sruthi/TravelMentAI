@@ -1,0 +1,6 @@
+{
+  "name": "TravelMate AI",
+  "description": "Plan your entire journey in one place — flights, hotels, local cabs, dining, attractions, interactive maps, weather, budget calculator, and AI-powered trip itineraries.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

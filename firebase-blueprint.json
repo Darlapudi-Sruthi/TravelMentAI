@@ -1,0 +1,178 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile preferences and travel settings.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique identifier matching Firebase Auth UID.",
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the traveller.",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "homeCity": {
+          "type": "string",
+          "description": "Default starting city for trip searches.",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "preferredCurrency": {
+          "type": "string",
+          "description": "Preferred display currency code.",
+          "enum": ["INR", "USD", "EUR"],
+          "maxLength": 10,
+          "minLength": 3
+        },
+        "travelStyle": {
+          "type": "string",
+          "description": "Default travel tier preference.",
+          "enum": ["Budget", "Standard", "Premium"],
+          "maxLength": 20,
+          "minLength": 6
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the profile was last updated."
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "homeCity",
+        "preferredCurrency",
+        "travelStyle",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SavedTrip": {
+      "title": "SavedTrip",
+      "description": "Saved trip itinerary, budget, and bookmarked hotels, restaurants, and tourist places.",
+      "type": "object",
+      "properties": {
+        "tripId": {
+          "type": "string",
+          "description": "Unique document identifier for the trip.",
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the trip owner.",
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "origin": {
+          "type": "string",
+          "description": "Starting city or airport.",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "destination": {
+          "type": "string",
+          "description": "Destination city or region.",
+          "maxLength": 100,
+          "minLength": 1
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Departure date string (YYYY-MM-DD).",
+          "maxLength": 30,
+          "minLength": 1
+        },
+        "endDate": {
+          "type": "string",
+          "description": "Return date string (YYYY-MM-DD).",
+          "maxLength": 30,
+          "minLength": 1
+        },
+        "travellers": {
+          "type": "integer",
+          "description": "Number of travellers (1 to 50)."
+        },
+        "tripType": {
+          "type": "string",
+          "description": "Category of the trip.",
+          "enum": ["Solo", "Family", "Friends", "Couple", "Business"],
+          "maxLength": 20,
+          "minLength": 4
+        },
+        "totalBudget": {
+          "type": "integer",
+          "description": "Estimated or target budget in INR."
+        },
+        "savedHotels": {
+          "type": "array",
+          "description": "Bounded list (max 10) of saved hotel names/IDs."
+        },
+        "savedRestaurants": {
+          "type": "array",
+          "description": "Bounded list (max 10) of saved restaurant names/IDs."
+        },
+        "savedPlaces": {
+          "type": "array",
+          "description": "Bounded list (max 10) of saved tourist place names/IDs."
+        },
+        "itinerarySummary": {
+          "type": "string",
+          "description": "Serialized or formatted itinerary summary for the trip.",
+          "maxLength": 5000,
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the trip was saved."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the trip was last updated."
+        }
+      },
+      "required": [
+        "tripId",
+        "ownerId",
+        "origin",
+        "destination",
+        "startDate",
+        "endDate",
+        "travellers",
+        "tripType",
+        "totalBudget",
+        "savedHotels",
+        "savedRestaurants",
+        "savedPlaces",
+        "itinerarySummary",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores private user profile and travel preferences keyed by Firebase Auth UID."
+    },
+    "/trips/{tripId}": {
+      "schema": { "$ref": "#/entities/SavedTrip" },
+      "description": "Stores saved trips, itineraries, and bookmarked items owned by authenticated users."
+    }
+  }
+}
